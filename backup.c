@@ -13,6 +13,9 @@
             ANDRIK URIEL REYES ROQUE
             IAN ALEXIS SOLIS HERNANDEZ */
 
+char RUTA_ORIGEN[255]; //De donde se van a tomar los archivos
+char RUTA_DESTINO[255]; //A donde los queremos hacer backup
+
 int main(int argc, char *argv[])
 {
     // system("clear");
@@ -20,9 +23,6 @@ int main(int argc, char *argv[])
     DIR *d; //Puntero para representar al directorio del sistema de archivos
     struct dirent *dir; //Puntero para representar la entrada a un directorio
     struct stat st; //Estructura de datos que contiene informacion detallada acerca de un archivo
-
-    char RUTA_ORIGEN[255]; //De donde se van a tomar los archivos
-    char RUTA_DESTINO[255]; //A donde los queremos hacer backup
 
     printf("Seleccione una opcion para hacer backup: \n");
     printf("1. Archivo .txt en esta misma carpeta\n");
