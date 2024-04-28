@@ -13,6 +13,8 @@
             ANDRIK URIEL REYES ROQUE
             IAN ALEXIS SOLIS HERNANDEZ */
 
+int getDirPath(int, char *[]);
+
 char RUTA_ORIGEN[255]; //De donde se van a tomar los archivos
 char RUTA_DESTINO[255]; //A donde los queremos hacer backup
 
@@ -24,70 +26,10 @@ int main(int argc, char *argv[])
     struct dirent *dir; //Puntero para representar la entrada a un directorio
     struct stat st; //Estructura de datos que contiene informacion detallada acerca de un archivo
 
-    printf("Seleccione una opcion para hacer backup: \n");
-    printf("1. Archivo .txt en esta misma carpeta\n");
-    printf("2. Argumento de entrada al programa, argumento 1: Origen, argumento 2: Destino\n");
-    printf("3. Por teclado\n");
-    printf("Cualquier otra opcion terminara INMEDIATAMENTE el programa\n");
-    int opcion = 0;
-    scanf("%d", &opcion);
-
-    /*Switch para elegir una opción de backup, por un archivo, 
-    argumentos del programa, consola*/
-    switch (opcion)
-    {
-    case 1:
-    system("clear");
-    FILE *archivo; //Apuntador al archivo que se abrira
-    char nombre_archivo[100]; //Nombre del archivo a abrir
-    printf("\033[1;33mEl archivo debe contener dos lineas, 1: Direccion a guardar, 2: Direccion destino\n");
-    printf("Nombre del archivo: "); 
-    scanf("%s", nombre_archivo);
-    archivo = fopen(nombre_archivo, "r"); //Se intenta abrir el archivo
-    if (archivo == NULL) {
-        printf("No se pudo abrir el archivo.\n");
+    if(getDirPath(argc, argv) != 0){
+        printf("Error al leer alguna de las direcciones\n");
         return -1;
     }
-    if(fgets(RUTA_ORIGEN, sizeof(RUTA_ORIGEN), archivo) != NULL){
-        if(RUTA_ORIGEN[strlen(RUTA_ORIGEN) - 1] == '\n'){RUTA_ORIGEN[strlen(RUTA_ORIGEN) - 1] = '\0';} //Elimina caracter escape
-    }
-    if(fgets(RUTA_DESTINO, sizeof(RUTA_DESTINO), archivo) != NULL){
-        if(RUTA_DESTINO[strlen(RUTA_DESTINO) - 1] == '\n'){RUTA_DESTINO[strlen(RUTA_DESTINO) - 1] = '\0';} //Elimina caracter escape
-    }
-        break;
-    case 2:
-    system("clear");
-    if(argc==3){
-        strcpy(RUTA_ORIGEN, argv[1]);
-        strcpy(RUTA_DESTINO, argv[2]);
-    }
-    else{
-        printf("No hay argumentos suficientes para hacer el backup\n");
-        return -1;
-    }
-        break;
-    case 3:
-    system("clear");
-    printf("Directorio actual:\n");
-    system("pwd");
-    printf("Ingresar la ruta de la carpeta de la que quiera hacer un backup,\n");
-    printf("indique un \'.\' al principio para referir a directorios dentro del actual: ");
-    scanf("%s", RUTA_ORIGEN);
-    printf("Ingresar la ruta de la carpeta de en la que quiera guardar los archivos,\n");
-    printf("indique un \'.\' al principio para referir a directorios dentro del actual: ");
-    scanf("%s", RUTA_DESTINO);
-        break;
-    default:
-    return -1;
-        break;
-    }
-
-    /*Validación para que el backup sea exitoso*/
-    if((RUTA_ORIGEN[strlen(RUTA_ORIGEN)-1]!= '/')||(RUTA_DESTINO[strlen(RUTA_DESTINO)-1]!= '/')){
-        printf("Formato de directorio invalido, debe acabar en /\n");
-        return -1;
-    }
-
     /*
     Hacemos una primera iteracion para conocer los n
     archivos que hay en la ruta que el usuario pone, esto lo hacemos
@@ -190,5 +132,72 @@ int main(int argc, char *argv[])
     //     break;
     // }
 
+    return 0;
+}
+
+int getDirPath(int argc, char *argv[]){
+    printf("Seleccione una opcion para hacer backup: \n");
+    printf("1. Archivo .txt en esta misma carpeta\n");
+    printf("2. Argumento de entrada al programa, argumento 1: Origen, argumento 2: Destino\n");
+    printf("3. Por teclado\n");
+    printf("Cualquier otra opcion terminara INMEDIATAMENTE el programa\n");
+    int opcion = 0;
+    scanf("%d", &opcion);
+
+    /*Switch para elegir una opción de backup, por un archivo, 
+    argumentos del programa, consola*/
+    switch (opcion)
+    {
+    case 1:
+    system("clear");
+    FILE *archivo; //Apuntador al archivo que se abrira
+    char nombre_archivo[100]; //Nombre del archivo a abrir
+    printf("\033[1;33mEl archivo debe contener dos lineas, 1: Direccion a guardar, 2: Direccion destino\n");
+    printf("Nombre del archivo: "); 
+    scanf("%s", nombre_archivo);
+    archivo = fopen(nombre_archivo, "r"); //Se intenta abrir el archivo
+    if (archivo == NULL) {
+        printf("No se pudo abrir el archivo.\n");
+        return -1;
+    }
+    if(fgets(RUTA_ORIGEN, sizeof(RUTA_ORIGEN), archivo) != NULL){
+        if(RUTA_ORIGEN[strlen(RUTA_ORIGEN) - 1] == '\n'){RUTA_ORIGEN[strlen(RUTA_ORIGEN) - 1] = '\0';} //Elimina caracter escape
+    }
+    if(fgets(RUTA_DESTINO, sizeof(RUTA_DESTINO), archivo) != NULL){
+        if(RUTA_DESTINO[strlen(RUTA_DESTINO) - 1] == '\n'){RUTA_DESTINO[strlen(RUTA_DESTINO) - 1] = '\0';} //Elimina caracter escape
+    }
+        break;
+    case 2:
+    system("clear");
+    if(argc==3){
+        strcpy(RUTA_ORIGEN, argv[1]);
+        strcpy(RUTA_DESTINO, argv[2]);
+    }
+    else{
+        printf("No hay argumentos suficientes para hacer el backup\n");
+        return -1;
+    }
+        break;
+    case 3:
+    system("clear");
+    printf("Directorio actual:\n");
+    system("pwd");
+    printf("Ingresar la ruta de la carpeta de la que quiera hacer un backup,\n");
+    printf("indique un \'.\' al principio para referir a directorios dentro del actual: ");
+    scanf("%s", RUTA_ORIGEN);
+    printf("Ingresar la ruta de la carpeta de en la que quiera guardar los archivos,\n");
+    printf("indique un \'.\' al principio para referir a directorios dentro del actual: ");
+    scanf("%s", RUTA_DESTINO);
+        break;
+    default:
+    return -1;
+        break;
+    }
+
+    /*Validación para que el backup sea exitoso*/
+    if((RUTA_ORIGEN[strlen(RUTA_ORIGEN)-1]!= '/')||(RUTA_DESTINO[strlen(RUTA_DESTINO)-1]!= '/')){
+        printf("Formato de directorio invalido, debe acabar en /\n");
+        return -1;
+    }
     return 0;
 }
