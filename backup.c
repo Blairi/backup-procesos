@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 
     if(getDirPath(argc, argv) != 0){
         printf("Error al leer alguna de las direcciones\n");
-        return -1;
+        return 1;
     }
     /*
     Hacemos una primera iteracion para conocer los n
@@ -58,12 +58,12 @@ int main(int argc, char *argv[])
     else
     {
         printf("\033[1;31mCarpeta de origen no existente, imposible de abrir\033[1;31m\n");
-        return -1;
+        return 1;
     }
 
     /*
     Hacemos una segunda iteracion ahora si para guardar las rutas de los
-    archivos en un solo arreglo */
+    archivos en un solo arreglo*/
     char nombreArchivo[n][255];
     d = opendir(RUTA_ORIGEN);
     int i = 0;
@@ -88,10 +88,20 @@ int main(int argc, char *argv[])
     }
     closedir(d);
 
+    /*Salida a consola
     printf("Listado de archivos a respaldar:\n");
     for (int j = 0; j < i; j++) {
         printf("\033[1;36mArchivo %d\033[1;36m: %s\n", j+1, nombreArchivo[j]);
     }
+    */
+    FILE *archivoListaBackup;
+    archivoListaBackup = fopen("listaBackup.txt", "w");
+    if(archivoListaBackup == NULL){printf("Imposible abrir archivo.\n"); return 1;}
+    fprintf( archivoListaBackup ,"Listado de los %d archivos a respaldar:\n", i);
+    for (int j = 0; j < i; j++) {
+        fprintf(archivoListaBackup,"Archivo %d: %s\n", j+1, nombreArchivo[j]);
+    }
+    fclose(archivoListaBackup);
 
     // Copiamos 
     // for (int j = 0; j < i; j++) {
@@ -158,7 +168,7 @@ int getDirPath(int argc, char *argv[]){
     archivo = fopen(nombre_archivo, "r"); //Se intenta abrir el archivo
     if (archivo == NULL) {
         printf("No se pudo abrir el archivo.\n");
-        return -1;
+        return 1;
     }
     if(fgets(RUTA_ORIGEN, sizeof(RUTA_ORIGEN), archivo) != NULL){
         if(RUTA_ORIGEN[strlen(RUTA_ORIGEN) - 1] == '\n'){RUTA_ORIGEN[strlen(RUTA_ORIGEN) - 1] = '\0';} //Elimina caracter escape
@@ -166,6 +176,7 @@ int getDirPath(int argc, char *argv[]){
     if(fgets(RUTA_DESTINO, sizeof(RUTA_DESTINO), archivo) != NULL){
         if(RUTA_DESTINO[strlen(RUTA_DESTINO) - 1] == '\n'){RUTA_DESTINO[strlen(RUTA_DESTINO) - 1] = '\0';} //Elimina caracter escape
     }
+    fclose(archivo);
         break;
     case 2:
     system("clear");
@@ -175,7 +186,7 @@ int getDirPath(int argc, char *argv[]){
     }
     else{
         printf("No hay argumentos suficientes para hacer el backup\n");
-        return -1;
+        return 1;
     }
         break;
     case 3:
@@ -190,14 +201,14 @@ int getDirPath(int argc, char *argv[]){
     scanf("%s", RUTA_DESTINO);
         break;
     default:
-    return -1;
+    return 1;
         break;
     }
 
     /*Validación para que el backup sea exitoso*/
     if((RUTA_ORIGEN[strlen(RUTA_ORIGEN)-1]!= '/')||(RUTA_DESTINO[strlen(RUTA_DESTINO)-1]!= '/')){
         printf("Formato de directorio invalido, debe acabar en /\n");
-        return -1;
+        return 1;
     }
     return 0;
 }
