@@ -6,6 +6,8 @@
 #include <sys/wait.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <stdbool.h>
+
 
 /* Integrantes :
             ROBERTO ABURTO LOPEZ
@@ -26,36 +28,22 @@ char RUTA_DESTINO[255]; //A donde los queremos hacer backup
 
 int main(int argc, char *argv[])
 {
-
+    char msg[256]; //Mensaje
+    int index = 0;
+    int n = 0;
+    int pipe1[2], pipe2[2]; //Pipes
+    if(pipe( pipe1 ) < 0 || pipe( pipe2 ) < 0){
+        perror("No fue posible crear alguno de los pipes\n");
+        exit(1);
+    }
+    printf("Proceso padre(PID = %i)\n", getpid());
+    printf("==============================================================\n");                //Se leen los paths a los directorios
     if( getDirPath(argc, argv) != 0 ){
         printf("Error al leer alguna de las direcciones\n");
         return 1;
     }
-
+    //Se abre el directorio
     DIR *dir = opendir( RUTA_DESTINO );
-
-    // comprobando si existe la carpeta destino
-    if (dir)
-        // si existe la eliminamos
-        removeDirectory( RUTA_DESTINO );
-
-    // si no existe la creamos
-    mkdir( RUTA_DESTINO, 0777 );
-
-    // Contamos los archivos en la carpeta origen    
-    int n = countFiles( RUTA_ORIGEN );
-    // // Obtenemos las rutas de los archivos
-    char **rutasArchivos = getFilesPath( RUTA_ORIGEN, n );
-    
-    makeList(n, rutasArchivos);
-
-    int fd[2];
-    if(pipe( fd ) < 0){
-        perror("No fue posible crear el pipe\n");
-        exit(1);
-    }
-    printf("Proceso padre(PID = %i)\n", getpid());
-    printf("=====================================\n");
     pid_t pid = fork();
     char buff[BUFFER_SIZE];
 
@@ -68,38 +56,67 @@ int main(int argc, char *argv[])
 
         // codigo para el hijo
         case 0:
-            for (int i = 0; i < n; i++)
+            //Pipes que el hijo va a ocupar: pipe1[1] para escribir al padre y pipe2[0] para leer al padre
+            close(pipe1[0]);
+            close(pipe2[1]);
+            read(pipe2[0], &n, sizeof(n));
+            printf("Hijo[pid=%d]: -------De a cuerdo, padre respaldare %d archivos-------\n\n", getpid(),n);
+            read(pipe2[0], msg, sizeof(msg));
+            while (strcmp(msg, "LISTO") != 0)
             {
-                // obtener nombre del archivo
-                char *nombreArchivo;
-                char *ultimaDiagonal = strrchr(rutasArchivos[i], '/');
-                nombreArchivo = ultimaDiagonal + 1;
-
-                printf("(Padre --> %s)\n", nombreArchivo);
-                printf("\tHijo[pid=%d], respaldando el archivo: %s\t pendientes: %d/%d\n", getpid(), nombreArchivo, n-i-1, n);
-
-                copyFile( rutasArchivos[i], RUTA_DESTINO );
+                printf("\tHijo[pid=%d], respaldando el archivo: %s\t pendientes: %d/%d\n", getpid(), msg, n-index-1, n);
+                copyFile(msg, RUTA_DESTINO );
+                read(pipe2[0], msg, sizeof(msg));
+                index++;
             }
-            // Cerrar lectura
-            close(fd[0]);
             // escribir mensaje al padre
-            write(fd[1], "Adios padre, termine el respaldo...\n", 37);
-            // Cerrar escritura
-            close(fd[1]);
+            
+            write(pipe1[1], &index, sizeof(index));
+            // Cerrar pipes
+            close(pipe1[1]);
+            close(pipe2[0]);
             exit(0);
         break;
 
         // codigo para el padre
-        default:
-            printf("PADRE [%d]: Hola hijo, realiza el respaldo de %d archivos\n\n", getpid(), n);
+        default: 
+            //Pipes que el padre va a utilizar: pipe1[0] para leer al hijo y pipe2[1] para escribir a hijo
+            close(pipe1[1]); 
+            close(pipe2[0]);
 
-            // Cerrando escritura
-            close(fd[1]);
-            // esperando que el hijo termine de respaldar
-            if (read(fd[0], buff, BUFFER_SIZE))
-            {
-                printf("\nPadre[pid=%d] mensaje de mi hijo: %s\n", getpid(), buff);
+            // comprobando si existe la carpeta destino
+            if (dir)
+                // si existe la eliminamos
+                removeDirectory( RUTA_DESTINO );
+
+            // si no existe la creamos
+            mkdir( RUTA_DESTINO, 0777 );
+
+            // Contamos los archivos en la carpeta origen    
+            n = countFiles( RUTA_ORIGEN );
+            // // Obtenemos las rutas de los archivos
+            char **rutasArchivos = getFilesPath( RUTA_ORIGEN, n );
+            makeList(n, rutasArchivos);
+            printf("PADRE [%d]: Hola hijo, realiza el respaldo de %d archivos\n\n", getpid(), n);
+            //Enviando al hijo el numero de archivos
+            write(pipe2[1], &n, sizeof(n));
+
+            char *nombreArchivo;
+            char *ultimaDiagonal;
+            while( index < n ){
+                // obtener nombre del archivo
+                ultimaDiagonal = strrchr(rutasArchivos[index], '/');
+                nombreArchivo = ultimaDiagonal + 1;
+                printf("(Padre: Enviando el nombre de archivo al hijo --> %s)\n", nombreArchivo);
+                strcpy(msg, rutasArchivos[index]);
+                write(pipe2[1], msg, sizeof(msg));
+                index++;
             }
+            strcpy(msg, "LISTO"); //Mensaje para que el hijo termine
+            write(pipe2[1],msg, sizeof(msg)); //Envio de mensaje
+            // esperando que el hijo termine de respaldar
+            read(pipe1[0], &n, sizeof(n));
+            printf("\nPadre[pid=%d] mi hijo a respaldado: %d archivos con exito\n", getpid(), n);
             
             printf("Padre[pid=%d] comprobando respaldo:\n", getpid());
 
@@ -107,12 +124,13 @@ int main(int argc, char *argv[])
             strcpy(comandoComprobacion, "ls -l ");
             strcat(comandoComprobacion, RUTA_DESTINO);
             system(comandoComprobacion);
-
-
+            
+            close(pipe1[0]);
+            close(pipe2[1]);
         break;
     }
 
-    printf("\n%d ARCHIVOS RESPALDADOS CON EXITO\n", n);
+    
     printf("Proceso padre[pid=%d] terminado\n", getpid());
 
     return 0;
