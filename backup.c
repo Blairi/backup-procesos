@@ -47,7 +47,10 @@ int main(int argc, char *argv[])
     char **rutasArchivos = getFilesPath( RUTA_ORIGEN, n );
     
     int fd[2];
-    pipe( fd );
+    if(pipe( fd ) < 0){
+        perror("No fue posible crear el pipe\n");
+        exit(1);
+    }
     pid_t pid = fork();
     char buff[BUFFER_SIZE];
 
