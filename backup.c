@@ -118,7 +118,12 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-
+/**
+ * @brief Copiar un archivo de la carpeta origen a la destino
+ * 
+ * @param pathFile Dirección del archivo a respaldar
+ * @param dest Destino del archivo
+ */
 void copyFile(char *pathFile, char *dest)
 {
     char *nombreArchivo;
@@ -160,7 +165,11 @@ void copyFile(char *pathFile, char *dest)
 
 }
 
-
+/**
+ * @brief Borarr el respaldo viejo
+ * 
+ * @param path Ruta del respaldo viejo
+ */
 void removeDirectory(char * path)
 {
     printf("PADRE [pid=%d]: borrando respaldo viejo...\n", getpid());
@@ -208,9 +217,14 @@ void removeDirectory(char * path)
     }
 
 }
-/*
-    Hacemos una segunda iteracion ahora si para guardar las rutas de los
-    archivos en un solo arreglo */
+
+/**
+ * @brief Conseguir la ruta de cada uno de los archivos a respaldar
+ * 
+ * @param path Directorio donde se encuentran
+ * @param size numero de archivos a respaldar
+ * @return char** Matriz que contiene todos los archivos a respaldar
+ */
 char **getFilesPath(char *path, int size)
 {
     DIR *d; //Puntero para representar al directorio del sistema de archivos
@@ -249,10 +263,12 @@ char **getFilesPath(char *path, int size)
 }
 
 
-/*
-    Hacemos una primera iteracion para conocer los n
-    archivos que hay en la ruta que el usuario pone, esto lo hacemos
-    para asignar n localidades de memoria al arreglo */
+/**
+ * @brief Hacer el conteo de cúantos archivos se tendrán que respaldar
+ * 
+ * @param path Ruta donde se encuentran los archivos a respaldar
+ * @return int Numero de archivos a respaldar
+ */
 int countFiles(char *path)
 {
     DIR *d; //Puntero para representar al directorio del sistema de archivos
@@ -292,6 +308,13 @@ int countFiles(char *path)
 }
 
 
+/**
+ * @brief Conseguir la ruta de origen y la ruta de destino de los archivos a respaldar
+ * 
+ * @param argc Contador de argumentos del programa, poor si esa es la elección del usuario
+ * @param argv Vector de argumentos de programa
+ * @return int Se regresa 1 si no se completó la obtención con éxito, 0 si no fue ese el caso.
+ */
 int getDirPath(int argc, char *argv[]){
     printf("Seleccione una opcion para hacer backup: \n");
     printf("1. Archivo .txt en esta misma carpeta\n");
@@ -360,6 +383,12 @@ int getDirPath(int argc, char *argv[]){
     return 0;
 }
 
+/**
+ * @brief Crear el archivo que contiene los archivos a respaldar
+ * 
+ * @param n Numero de archivos de los que se hará el respaldo
+ * @param filesPath Direcciones de los archivos de los que se hará respaldo
+ */
 void makeList(int n, char **filesPath){
     FILE *archivoListaBackup;
     archivoListaBackup = fopen("listaBackup.txt", "w");
