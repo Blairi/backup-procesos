@@ -18,6 +18,7 @@ int countFiles(char *);
 char **getFilesPath(char *, int);
 void removeDirectory(char *);
 void copyFile(char *, char *);
+void makeList(int, char **);
 
 #define BUFFER_SIZE 1024
 char RUTA_ORIGEN[255]; //De donde se van a tomar los archivos
@@ -46,11 +47,15 @@ int main(int argc, char *argv[])
     // // Obtenemos las rutas de los archivos
     char **rutasArchivos = getFilesPath( RUTA_ORIGEN, n );
     
+    makeList(n, rutasArchivos);
+
     int fd[2];
     if(pipe( fd ) < 0){
         perror("No fue posible crear el pipe\n");
         exit(1);
     }
+    printf("Proceso padre(PID = %i)\n", getpid());
+    printf("=====================================\n");
     pid_t pid = fork();
     char buff[BUFFER_SIZE];
 
@@ -353,4 +358,15 @@ int getDirPath(int argc, char *argv[]){
         return 1;
     }
     return 0;
+}
+
+void makeList(int n, char **filesPath){
+    FILE *archivoListaBackup;
+    archivoListaBackup = fopen("listaBackup.txt", "w");
+    if(archivoListaBackup == NULL){printf("Imposible abrir archivo.\n"); return;}
+    fprintf( archivoListaBackup ,"Listado de los %d archivos a respaldar:\n", n);
+    for (int j = 0; j < n; j++) {
+        fprintf(archivoListaBackup,"Archivo %d: %s\n", j+1, filesPath[j]);
+    }
+    fclose(archivoListaBackup);
 }
