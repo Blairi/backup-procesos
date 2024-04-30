@@ -199,7 +199,7 @@ void removeDirectory(char * path)
         printf("dir removed '%s'\n", path);
     }
 
-
+}
 /*
     Hacemos una segunda iteracion ahora si para guardar las rutas de los
     archivos en un solo arreglo */
