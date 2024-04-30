@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 
     if( getDirPath(argc, argv) != 0 ){
         printf("Error al leer alguna de las direcciones\n");
-        return -1;
+        return 1;
     }
 
     DIR *dir = opendir( RUTA_DESTINO );
@@ -198,7 +198,6 @@ void removeDirectory(char * path)
         rmdir( path );
         printf("dir removed '%s'\n", path);
     }
-}
 
 
 /*
@@ -308,7 +307,7 @@ int getDirPath(int argc, char *argv[]){
     archivo = fopen(nombre_archivo, "r"); //Se intenta abrir el archivo
     if (archivo == NULL) {
         printf("No se pudo abrir el archivo.\n");
-        return -1;
+        return 1;
     }
     if(fgets(RUTA_ORIGEN, sizeof(RUTA_ORIGEN), archivo) != NULL){
         if(RUTA_ORIGEN[strlen(RUTA_ORIGEN) - 1] == '\n'){RUTA_ORIGEN[strlen(RUTA_ORIGEN) - 1] = '\0';} //Elimina caracter escape
@@ -316,6 +315,7 @@ int getDirPath(int argc, char *argv[]){
     if(fgets(RUTA_DESTINO, sizeof(RUTA_DESTINO), archivo) != NULL){
         if(RUTA_DESTINO[strlen(RUTA_DESTINO) - 1] == '\n'){RUTA_DESTINO[strlen(RUTA_DESTINO) - 1] = '\0';} //Elimina caracter escape
     }
+    fclose(archivo);
         break;
     case 2:
     system("clear");
@@ -325,7 +325,7 @@ int getDirPath(int argc, char *argv[]){
     }
     else{
         printf("No hay argumentos suficientes para hacer el backup\n");
-        return -1;
+        return 1;
     }
         break;
     case 3:
@@ -340,14 +340,14 @@ int getDirPath(int argc, char *argv[]){
     scanf("%s", RUTA_DESTINO);
         break;
     default:
-    return -1;
+    return 1;
         break;
     }
 
     /*Validación para que el backup sea exitoso*/
     if((RUTA_ORIGEN[strlen(RUTA_ORIGEN)-1]!= '/')||(RUTA_DESTINO[strlen(RUTA_DESTINO)-1]!= '/')){
         printf("Formato de directorio invalido, debe acabar en /\n");
-        return -1;
+        return 1;
     }
     return 0;
 }
