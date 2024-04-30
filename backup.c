@@ -14,36 +14,255 @@
             IAN ALEXIS SOLIS HERNANDEZ */
 
 int getDirPath(int, char *[]);
+int countFiles(char *);
+char **getFilesPath(char *, int);
+void removeDirectory(char *);
+void copyFile(char *, char *);
 
+#define BUFFER_SIZE 1024
 char RUTA_ORIGEN[255]; //De donde se van a tomar los archivos
 char RUTA_DESTINO[255]; //A donde los queremos hacer backup
 
 int main(int argc, char *argv[])
 {
-    // system("clear");
 
+    if( getDirPath(argc, argv) != 0 ){
+        printf("Error al leer alguna de las direcciones\n");
+        return -1;
+    }
+
+    DIR *dir = opendir( RUTA_DESTINO );
+
+    // comprobando si existe la carpeta destino
+    if (dir)
+        // si existe la eliminamos
+        removeDirectory( RUTA_DESTINO );
+
+    // si no existe la creamos
+    mkdir( RUTA_DESTINO, 0777 );
+
+    // Contamos los archivos en la carpeta origen    
+    int n = countFiles( RUTA_ORIGEN );
+    // // Obtenemos las rutas de los archivos
+    char **rutasArchivos = getFilesPath( RUTA_ORIGEN, n );
+    
+    int fd[2];
+    pipe( fd );
+    pid_t pid = fork();
+    char buff[BUFFER_SIZE];
+
+    switch ( pid )
+    {
+        case -1:
+            printf("Error al crear el proceso\n");
+            exit(EXIT_FAILURE);
+        break;
+
+        // codigo para el hijo
+        case 0:
+            for (int i = 0; i < n; i++)
+            {
+                // obtener nombre del archivo
+                char *nombreArchivo;
+                char *ultimaDiagonal = strrchr(rutasArchivos[i], '/');
+                nombreArchivo = ultimaDiagonal + 1;
+
+                printf("(Padre --> %s)\n", nombreArchivo);
+                printf("\tHijo[pid=%d], respaldando el archivo: %s\t pendientes: %d/%d\n", getpid(), nombreArchivo, n-i-1, n);
+
+                copyFile( rutasArchivos[i], RUTA_DESTINO );
+            }
+            // Cerrar lectura
+            close(fd[0]);
+            // escribir mensaje al padre
+            write(fd[1], "Adios padre, termine el respaldo...\n", 37);
+            // Cerrar escritura
+            close(fd[1]);
+            exit(0);
+        break;
+
+        // codigo para el padre
+        default:
+            printf("PADRE [%d]: Hola hijo, realiza el respaldo de %d archivos\n\n", getpid(), n);
+
+            // Cerrando escritura
+            close(fd[1]);
+            // esperando que el hijo termine de respaldar
+            if (read(fd[0], buff, BUFFER_SIZE))
+            {
+                printf("\nPadre[pid=%d] mensaje de mi hijo: %s\n", getpid(), buff);
+            }
+            
+            printf("Padre[pid=%d] comprobando respaldo:\n", getpid());
+
+            char comandoComprobacion[BUFFER_SIZE];
+            strcpy(comandoComprobacion, "ls -l ");
+            strcat(comandoComprobacion, RUTA_DESTINO);
+            system(comandoComprobacion);
+
+
+        break;
+    }
+
+    printf("\n%d ARCHIVOS RESPALDADOS CON EXITO\n", n);
+    printf("Proceso padre[pid=%d] terminado\n", getpid());
+
+    return 0;
+}
+
+
+void copyFile(char *pathFile, char *dest)
+{
+    char *nombreArchivo;
+
+    // obtener nombre del archivo
+    char *ultimaDiagonal = strrchr(pathFile, '/');
+
+    // Si se encuentra el carácter '/'
+    if (ultimaDiagonal != NULL) {
+        // Avanza un carácter para obtener el nombre del archivo
+        nombreArchivo = ultimaDiagonal + 1;
+    } else {
+        // Si no se encuentra el carácter '/', la ruta contiene solo el nombre del archivo
+        nombreArchivo = pathFile;
+    }
+
+    // asignamos memoria
+    char *archivoRespaldado;
+    archivoRespaldado = (char *)malloc(strlen(dest) + 1 + 255);
+
+    strcpy(archivoRespaldado, dest);
+    strcat(archivoRespaldado, nombreArchivo);
+
+    // Abre el archivo de origen en modo lectura 
+    FILE *fuente = fopen(pathFile, "rb");
+    FILE *copia = fopen(archivoRespaldado, "wb");
+
+    if (fuente && copia) {    
+        char ch;
+    
+        // Lee y escribe cada byte del archivo
+        while (fread(&ch, sizeof(char), 1, fuente) == 1) { 
+            fwrite(&ch, sizeof(char), 1, copia);
+        }
+
+        fclose(fuente); 
+        fclose(copia);
+    }
+
+}
+
+
+void removeDirectory(char * path)
+{
+    printf("PADRE [pid=%d]: borrando respaldo viejo...\n", getpid());
+    DIR *d; //Puntero para representar al directorio del sistema de archivos
+    struct dirent *dir; //Puntero para representar la entrada a un directorio
+    struct stat st; //Estructura de datos que contiene informacion detallada acerca de un archivo
+    char ruta[255];
+    d = opendir( path );
+    if ( d )
+    {
+        while ( (dir = readdir(d)) != NULL )
+        {
+            // ignorar las rutas relativas
+            if (!strcmp(dir->d_name, ".") || !strcmp(dir->d_name, ".."))
+            {
+                continue;
+            }
+
+            strcpy(ruta, path);
+            strcat(ruta, dir->d_name);
+            stat(ruta, &st);
+
+            // si es un subdirectorio
+            if ( !S_ISREG(st.st_mode) )
+            {
+                strcat(ruta, "/");
+
+                // llamada recursiva para los subdirectorios
+                removeDirectory( ruta );
+
+                rmdir( ruta );
+                printf("dir removed '%s'\n", ruta);
+            }
+            else
+            {
+                unlink( ruta );
+                printf("file removed '%s'\n", ruta);
+            }
+        }
+        closedir(d);
+        
+        // finalmente borramos la carpeta principal
+        rmdir( path );
+        printf("dir removed '%s'\n", path);
+    }
+}
+
+
+/*
+    Hacemos una segunda iteracion ahora si para guardar las rutas de los
+    archivos en un solo arreglo */
+char **getFilesPath(char *path, int size)
+{
     DIR *d; //Puntero para representar al directorio del sistema de archivos
     struct dirent *dir; //Puntero para representar la entrada a un directorio
     struct stat st; //Estructura de datos que contiene informacion detallada acerca de un archivo
 
-    if(getDirPath(argc, argv) != 0){
-        printf("Error al leer alguna de las direcciones\n");
-        return -1;
+    char **rutasArchivos = (char **)malloc(size * sizeof(char *));
+
+    d = opendir(path);
+    int i = 0;
+    while ( (dir = readdir(d)) != NULL )
+    {
+        char ruta[255];
+        strcpy(ruta, path);
+        strcat(ruta, dir->d_name);
+        stat(ruta, &st);
+
+        // ignoramos las carpetas
+        if ( !S_ISREG(st.st_mode) )
+        {
+            continue;
+        }
+
+        // Asigna memoria para cada ruta de archivo y copia la ruta
+        rutasArchivos[i] = (char *)malloc(strlen(ruta) + 1);
+
+        /*
+        Si es archivo lo guardamos en el arreglo
+        e incrementamos el contador */
+        strcpy( rutasArchivos[i], ruta );
+        i++;
     }
-    /*
+    closedir(d);
+
+    return rutasArchivos;
+}
+
+
+/*
     Hacemos una primera iteracion para conocer los n
     archivos que hay en la ruta que el usuario pone, esto lo hacemos
     para asignar n localidades de memoria al arreglo */
+int countFiles(char *path)
+{
+    DIR *d; //Puntero para representar al directorio del sistema de archivos
+    struct dirent *dir; //Puntero para representar la entrada a un directorio
+    struct stat st; //Estructura de datos que contiene informacion detallada acerca de un archivo
+
     int n = 0;
-    d = opendir( RUTA_ORIGEN );
-    if (d)
+
+    d = opendir( path );
+    if ( d )
     {
-        while ((dir = readdir(d)) != NULL)
+        while ( (dir = readdir(d)) != NULL )
         {
-            char path[255];
-            strcpy(path, RUTA_ORIGEN);
-            strcat(path, dir->d_name);
-            stat(path, &st);
+            char ruta[255];
+            strcpy(ruta, path);
+            strcat(ruta, dir->d_name);
+            stat(ruta, &st);
             // ignoramos las carpetas
             if (!S_ISREG(st.st_mode))
             {
@@ -58,82 +277,13 @@ int main(int argc, char *argv[])
     else
     {
         printf("\033[1;31mCarpeta de origen no existente, imposible de abrir\033[1;31m\n");
+        exit(EXIT_FAILURE);
         return -1;
     }
 
-    /*
-    Hacemos una segunda iteracion ahora si para guardar las rutas de los
-    archivos en un solo arreglo */
-    char nombreArchivo[n][255];
-    d = opendir(RUTA_ORIGEN);
-    int i = 0;
-    while ((dir = readdir(d)) != NULL)
-    {
-        char path[255];
-        strcpy(path, RUTA_ORIGEN);
-        strcat(path, dir->d_name);
-        stat(path, &st);
-
-        // ignoramos las carpetas
-        if (!S_ISREG(st.st_mode))
-        {
-            continue;
-        }
-
-        /*
-        Si es archivo incrementamos el contador
-        y lo guardamos en el arreglo */
-        strcpy(nombreArchivo[i], path);
-        i++;
-    }
-    closedir(d);
-
-    printf("Listado de archivos a respaldar:\n");
-    for (int j = 0; j < i; j++) {
-        printf("\033[1;36mArchivo %d\033[1;36m: %s\n", j+1, nombreArchivo[j]);
-    }
-
-    // Copiamos 
-    // for (int j = 0; j < i; j++) {
-    //     char path_origen[255];
-    //     strcpy("")
-    //     strcpy(path_origen, RUTA_ORIGEN);
-    //     strcat(path_origen, dir->d_name);
-    // }
-
-    // creamos un nuevo proceso hijo
-    // pid = fork();
-
-    // switch ( pid )
-    // {
-    //     case -1:
-    //         printf("Error al crear el proceso\n");
-    //     break;
-
-    //     // codigo para el hijo
-    //     case 0:
-    //         printf("%d: Soy el proceso hijo [%d] y mi padre es [%d]\n", getpid(), getppid());
-
-    //         // ponemos a trabajar al hijo
-    //         sleep(1);
-
-    //         printf("\thijo [%d]...Termine\n", getpid());
-    //         // matamos al hijo para que no haga nietos
-    //         exit(0);
-    //     break;
-
-    //     // codigo para el padre
-    //     default:
-    //         printf("Soy el proceso principal [%d]\n", getpid());
-    //         /*
-    //         Esperamos a que el nuevo proceso hijo termine para subir al fork de nuevo
-    //         y crear un nuevo hijo */
-    //         waitpid(pid, NULL, 0);
-    //     break;
-    // }
-
-    return 0;
+    return n;
 }
+
 
 int getDirPath(int argc, char *argv[]){
     printf("Seleccione una opcion para hacer backup: \n");
